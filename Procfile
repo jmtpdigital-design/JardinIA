@@ -1,1 +1,1 @@
-
+worker: python jardinIA.py
