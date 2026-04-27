@@ -57,18 +57,21 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def generate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
-    await asyncio.sleep(random.uniform(1.0, 2.3))
+    await asyncio.sleep(1.0)
     
     try:
         resp = client.chat.completions.create(
             model="gpt-4o-mini",
-            messages=[{"role": "user", "content": f"Réponds de façon claire, utile et détaillée : {text}"}],
-            temperature=0.75
+            messages=[{"role": "user", "content": f"Réponds de façon claire, utile et détaillée en français : {text}"}],
+            temperature=0.75,
+            max_tokens=800
         )
         await update.message.reply_text(resp.choices[0].message.content)
-    except:
-        await update.message.reply_text("🌿 Je prépare une bonne réponse... réessaie dans quelques secondes.")
-
+        
+    except Exception as e:
+        error_msg = str(e)
+        print(f"ERREUR OpenAI: {error_msg}")   # Pour voir l'erreur dans les logs
+        await update.message.reply_text("🌿 Désolé, j'ai eu un petit souci technique.\nRéessaie dans 10 secondes ou pose une autre question.")
 # ================= LANCEMENT =================
 if __name__ == '__main__':
     app = Application.builder().token(TOKEN).build()
