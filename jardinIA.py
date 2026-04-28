@@ -7,71 +7,65 @@ from openai import OpenAI
 from datetime import time
 import pytz
 
-# ==================== CONFIG ====================
-TOKEN = "7966522581:AAGyVpPbz4if12pSIz7uFMzCvYNTtVFIljI"                    # ← Colle ton token de @BotFather ici
+# ================= CONFIG =================
+TOKEN = "7966522581:AAGyVpPbz4if12pSIz7uFMzCvYNTtVFIljI"                    # ← Ton token BotFather
 PUBLIC_CHANNEL = "@JardinIA"               # ← Ton canal public
-PREMIUM_CHANNEL = "@JardinIAPremium"       # ← Ton canal premium
+PREMIUM_CHANNEL = "@JardinIAPremium"
 
-client = OpenAI(api_key="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")   # ← Ta clé OpenAI
+client = OpenAI(api_key="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")
 
 logging.basicConfig(level=logging.INFO)
 
-# ================= AUTO-POST (3 fois par jour) =================
+# ================= AUTO-POST SIMPLE =================
 async def auto_post(context: ContextTypes.DEFAULT_TYPE):
-    options = [
-        ("🌱 Astuce du jour", "Crée une astuce jardinage pratique et utile."),
-        ("📋 Mini Tuto", "Crée un petit tutoriel étape par étape clair."),
-        ("💡 Conseil expert", "Donne un conseil malin pour le jardin ou potager.")
+    prompts = [
+        "Crée une astuce jardinage courte et utile pour aujourd'hui.",
+        "Crée un petit tutoriel étape par étape simple.",
+        "Donne un conseil malin et pratique pour le potager ou jardin."
     ]
     
-    title, prompt = random.choice(options)
+    prompt = random.choice(prompts)
     
     try:
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.82,
-            max_tokens=700
+            temperature=0.8,
+            max_tokens=600
         )
         
-        message = f"{title}\n\n{response.choices[0].message.content}\n\n"
-        message += f"🔥 Accède à la version Premium (9,99€/mois) → {PREMIUM_CHANNEL}"
+        message = "🌱 **JardinIA**\n\n" + response.choices[0].message.content + f"\n\n💎 Premium → {PREMIUM_CHANNEL}"
         
-        await context.bot.send_message(
-            chat_id=PUBLIC_CHANNEL, 
-            text=message, 
-            parse_mode='Markdown'
-        )
+        await context.bot.send_message(chat_id=PUBLIC_CHANNEL, text=message, parse_mode='Markdown')
+        print("✅ Post automatique envoyé")
+        
     except Exception as e:
-        print("Erreur auto-post:", e)
+        print(f"Erreur auto-post: {e}")
 
 # ================= COMMANDES =================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "🌱 **Bienvenue sur JardinIA !**\n\n"
-        "Ton assistant IA spécialisé jardin & potager.\n\n"
-        "Je poste 3 contenus par jour automatiquement.\n"
-        "Tu peux me poser toutes tes questions.\n\n"
-        "💎 Version Premium (9,99€/mois) → " + PREMIUM_CHANNEL
+        "🌱 **JardinIA est en ligne !**\n\n"
+        "Pose-moi toutes tes questions sur le jardin et le potager.\n"
+        "Je poste 3 astuces par jour automatiquement.\n\n"
+        "Version Premium (9,99€) → " + PREMIUM_CHANNEL
     )
 
 async def generate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
-    await asyncio.sleep(1.0)
+    await asyncio.sleep(1.2)
     
     try:
-        resp = client.chat.completions.create(
+        response = client.chat.completions.create(
             model="gpt-4o-mini",
-            messages=[{"role": "user", "content": f"Réponds de façon claire, utile et détaillée en français : {text}"}],
-            temperature=0.75,
-            max_tokens=800
+            messages=[{"role": "user", "content": f"Réponds clairement et utilement en français : {text}"}],
+            temperature=0.75
         )
-        await update.message.reply_text(resp.choices[0].message.content)
-        
+        await update.message.reply_text(response.choices[0].message.content)
     except Exception as e:
-        error_msg = str(e)
-        print(f"ERREUR OpenAI: {error_msg}")   # Pour voir l'erreur dans les logs
-        await update.message.reply_text("🌿 Désolé, j'ai eu un petit souci technique.\nRéessaie dans 10 secondes ou pose une autre question.")
+        print(f"Erreur réponse: {e}")
+        await update.message.reply_text("🌿 Réessaie dans 10 secondes...")
+
 # ================= LANCEMENT =================
 if __name__ == '__main__':
     app = Application.builder().token(TOKEN).build()
@@ -85,5 +79,5 @@ if __name__ == '__main__':
     app.job_queue.run_daily(auto_post, time(hour=14, minute=0, tzinfo=tz))
     app.job_queue.run_daily(auto_post, time(hour=20, minute=0, tzinfo=tz))
     
-    print("🌱 JardinIA est maintenant lancé !")
+    print("🌱 JardinIA lancé avec succès !")
     app.run_polling()
