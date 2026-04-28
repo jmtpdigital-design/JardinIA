@@ -8,7 +8,7 @@ from datetime import time
 import pytz
 
 # ================= CONFIG =================
-TOKEN = "7966522581:AAGyVpPbz4if12pSIz7uFMzCvYNTtVFIljI"                          # ← Ton token BotFather
+TOKEN = 7966522581:AAGyVpPbz4if12pSIz7uFMzCvYNTtVFIljI                          # ← Ton token BotFather
 PUBLIC_CHANNEL = "@JardinIA"                     # ← Ton canal public
 PREMIUM_CHANNEL = "@JardinIAPremium"             # ← Ton canal premium
 
