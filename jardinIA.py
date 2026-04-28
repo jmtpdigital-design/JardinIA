@@ -12,7 +12,7 @@ TOKEN = "7966522581:AAGyVpPbz4if12pSIz7uFMzCvYNTtVFIljI"                        
 PUBLIC_CHANNEL = "@JardinIA"                     # ← Ton canal public
 PREMIUM_CHANNEL = "@JardinIAPremium"             # ← Ton canal premium
 
-client = OpenAI(api_key=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)     # ← Ta clé OpenAI
+client = OpenAI(api_key="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")     # ← Ta clé OpenAI
 
 logging.basicConfig(level=logging.INFO)
 
