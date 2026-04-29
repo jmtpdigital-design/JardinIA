@@ -24,10 +24,11 @@ logging.basicConfig(level=logging.INFO)
 
 SYSTEM_PROMPT = """
 Tu es JardinIA, un expert français en jardinage et potager.
-Tu donnes des conseils pratiques, clairs, encourageants et adaptés à la France.
+Tu donnes des conseils pratiques, clairs, encourageants et réalistes.
+Tu réponds toujours en français.
 """
 
-# ================= AUTO-POST (3 fois par jour) =================
+# ================= AUTO-POST =================
 async def auto_post(context: ContextTypes.DEFAULT_TYPE):
     try:
         resp = client.chat.completions.create(
@@ -36,7 +37,7 @@ async def auto_post(context: ContextTypes.DEFAULT_TYPE):
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": random.choice([
                     "Crée une astuce jardinage utile pour aujourd'hui.",
-                    "Crée un petit tutoriel simple étape par étape.",
+                    "Crée un petit tutoriel simple.",
                     "Donne un conseil malin pour le potager."
                 ])}
             ],
@@ -44,20 +45,21 @@ async def auto_post(context: ContextTypes.DEFAULT_TYPE):
             max_tokens=650
         )
         
-        message = f"🌱 **JardinIA**\n\n{resp.choices[0].message.content}\n\n💎 Premium (9,99€) → {PREMIUM_CHANNEL}"
+        message = f"🌱 **JardinIA**\n\n{resp.choices[0].message.content}\n\n💎 Version Premium (9,99€/mois) → {PREMIUM_CHANNEL}"
         
         await context.bot.send_message(chat_id=PUBLIC_CHANNEL, text=message, parse_mode='Markdown')
-        print("✅ Auto-post envoyé")
+        print("✅ Auto-post envoyé avec succès")
     except Exception as e:
-        print(f"Auto-post erreur: {e}")
+        print(f"Erreur auto-post: {e}")
 
 # ================= COMMANDES =================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "🌱 **JardinIA est en ligne !**\n\n"
+        "🌱 **Bienvenue sur JardinIA !**\n\n"
+        "Ton assistant expert en jardinage et potager.\n\n"
         "Je poste 3 astuces par jour automatiquement.\n"
-        "Pose-moi toutes tes questions sur le jardin et le potager.\n\n"
-        "💎 Version Premium → " + PREMIUM_CHANNEL
+        "Pose-moi toutes tes questions !\n\n"
+        "💎 Premium → " + PREMIUM_CHANNEL
     )
 
 async def generate(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -77,17 +79,23 @@ async def generate(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(resp.choices[0].message.content)
     except Exception as e:
         print(f"Erreur: {e}")
-        await update.message.reply_text("🌿 Petite erreur, réessaie dans 10 secondes...")
+        await update.message.reply_text("🌿 Erreur, réessaie dans 10 secondes...")
+
+# ================= TEST AUTO-POST =================
+async def testpost(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("🔄 Envoi d'un test auto-post...")
+    await auto_post(context)
 
 # ================= LANCEMENT =================
 if __name__ == '__main__':
     if not TOKEN or not XAI_API_KEY:
-        print("❌ Manque TOKEN ou XAI_API_KEY")
+        print("❌ Manque TOKEN ou XAI_API_KEY dans Railway")
         exit(1)
     
     app = Application.builder().token(TOKEN).build()
     
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("testpost", testpost))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, generate))
     
     tz = pytz.timezone('Europe/Paris')
@@ -95,5 +103,5 @@ if __name__ == '__main__':
     app.job_queue.run_daily(auto_post, time(hour=14, minute=0, tzinfo=tz))
     app.job_queue.run_daily(auto_post, time(hour=20, minute=0, tzinfo=tz))
     
-    print("🌱 JardinIA lancé avec auto-post (3 fois par jour)")
+    print("🌱 JardinIA lancé avec auto-post (3/jour) + /testpost")
     app.run_polling()
