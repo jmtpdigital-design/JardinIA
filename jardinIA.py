@@ -1,7 +1,7 @@
 import logging
 import os
-import asyncio
 import random
+import asyncio
 from datetime import time
 import pytz
 
@@ -23,16 +23,16 @@ client = OpenAI(
 
 logging.basicConfig(level=logging.INFO)
 
-SYSTEM_PROMPT = "Tu es JardinIA, un expert français en jardinage et potager. Réponds de façon claire, pratique et encourageante."
+SYSTEM_PROMPT = "Tu es JardinIA, expert français en jardinage et potager. Réponds clairement, pratiquement et de façon encourageante."
 
 # ================= AUTO-POST =================
 async def auto_post(context: ContextTypes.DEFAULT_TYPE):
     try:
         resp = client.chat.completions.create(
-            model="grok-4.20",          # Modèle valide et puissant
+            model="grok-4.20",   # Modèle valide
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": "Crée une astuce jardinage utile pour aujourd'hui."}
+                {"role": "user", "content": "Donne une astuce jardinage utile et courte pour aujourd'hui."}
             ],
             temperature=0.8,
             max_tokens=600
@@ -41,13 +41,14 @@ async def auto_post(context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(chat_id=PUBLIC_CHANNEL, text=message, parse_mode='Markdown')
         print("✅ Auto-post envoyé")
     except Exception as e:
-        print(f"Auto-post error: {e}")
+        print(f"Auto-post erreur: {e}")
 
 # ================= COMMANDES =================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "🌱 **JardinIA** (Grok) est en ligne !\n\n"
-        "Pose-moi tes questions sur le jardin et le potager."
+        "🌱 **JardinIA** est en ligne !\n\n"
+        "Pose-moi tes questions sur le jardin.\n"
+        "Je poste 3 astuces par jour."
     )
 
 async def generate(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -66,16 +67,17 @@ async def generate(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         await update.message.reply_text(resp.choices[0].message.content)
     except Exception as e:
-        print(f"Erreur Grok: {e}")
+        print(f"Erreur: {e}")
         await update.message.reply_text("🌿 Erreur, réessaie dans 10 secondes...")
 
 # ================= LANCEMENT =================
 if __name__ == '__main__':
     if not TOKEN or not XAI_API_KEY:
-        print("❌ Manque TOKEN ou XAI_API_KEY dans les variables")
+        print("❌ Manque TOKEN ou XAI_API_KEY dans les variables Railway")
         exit(1)
     
     app = Application.builder().token(TOKEN).build()
+    
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, generate))
     
@@ -84,5 +86,5 @@ if __name__ == '__main__':
     app.job_queue.run_daily(auto_post, time(hour=14, minute=0, tzinfo=tz))
     app.job_queue.run_daily(auto_post, time(hour=20, minute=0, tzinfo=tz))
     
-    print("🌱 JardinIA avec Grok-4.20 lancé !")
+    print("🌱 JardinIA lancé avec auto-post !")
     app.run_polling()
