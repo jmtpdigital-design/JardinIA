@@ -12,9 +12,9 @@ from openai import OpenAI
 TOKEN = os.getenv("TOKEN")
 XAI_API_KEY = os.getenv("XAI_API_KEY")
 
-# IDs réels des canaux (fourni par toi)
-PUBLIC_CHANNEL = 8662081970          # JardinIA
-PREMIUM_CHANNEL = -1003993028860     # Jardin IA Premium
+# IDs réels des canaux
+PUBLIC_CHANNEL = -1003915029881      # ← @JardinIA (ID correct)
+PREMIUM_CHANNEL = -1003993028860     # ← Jardin IA Premium
 
 client = OpenAI(api_key=XAI_API_KEY, base_url="https://api.x.ai/v1")
 
@@ -42,7 +42,7 @@ async def auto_post(context: ContextTypes.DEFAULT_TYPE):
         message = f"🌱 **JardinIA**\n\n{resp.choices[0].message.content}\n\n💎 Premium (9,99€) → @JardinIAPremium"
         
         await context.bot.send_message(chat_id=PUBLIC_CHANNEL, text=message, parse_mode='Markdown')
-        print("✅ Auto-post envoyé dans le canal")
+        print("✅ Auto-post envoyé dans le canal PUBLIC")
     except Exception as e:
         print(f"Erreur auto-post: {e}")
 
@@ -87,5 +87,5 @@ if __name__ == '__main__':
     app.job_queue.run_daily(auto_post, time(hour=14, minute=0, tzinfo=tz))
     app.job_queue.run_daily(auto_post, time(hour=20, minute=0, tzinfo=tz))
     
-    print("🌱 JardinIA lancé avec auto-post (IDs réels)")
+    print("🌱 JardinIA lancé avec les vrais IDs des canaux")
     app.run_polling()
