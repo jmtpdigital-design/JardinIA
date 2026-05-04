@@ -12,9 +12,8 @@ from openai import OpenAI
 TOKEN = os.getenv("TOKEN")
 XAI_API_KEY = os.getenv("XAI_API_KEY")
 
-# IDs réels des canaux
-PUBLIC_CHANNEL = -1003915029881      # ← @JardinIA (ID correct)
-PREMIUM_CHANNEL = -1003993028860     # ← Jardin IA Premium
+PUBLIC_CHANNEL = -1003915029881      # ID de @JardinIA
+PREMIUM_CHANNEL = -1003993028860     # ID de @JardinIAPremium
 
 client = OpenAI(api_key=XAI_API_KEY, base_url="https://api.x.ai/v1")
 
@@ -22,7 +21,7 @@ logging.basicConfig(level=logging.INFO)
 
 SYSTEM_PROMPT = "Tu es JardinIA, expert français en jardinage et potager. Réponds de façon claire, pratique et encourageante."
 
-# ================= AUTO-POST =================
+# ================= AUTO-POST (dans les 2 canaux) =================
 async def auto_post(context: ContextTypes.DEFAULT_TYPE):
     try:
         resp = client.chat.completions.create(
@@ -39,10 +38,16 @@ async def auto_post(context: ContextTypes.DEFAULT_TYPE):
             max_tokens=650
         )
         
-        message = f"🌱 **JardinIA**\n\n{resp.choices[0].message.content}\n\n💎 Premium (9,99€) → @JardinIAPremium"
-        
+        message = f"🌱 **JardinIA**\n\n{resp.choices[0].message.content}\n\n💎 Premium → @JardinIAPremium"
+
+        # Envoi dans le canal public
         await context.bot.send_message(chat_id=PUBLIC_CHANNEL, text=message, parse_mode='Markdown')
-        print("✅ Auto-post envoyé dans le canal PUBLIC")
+        
+        # Envoi dans le canal Premium
+        await context.bot.send_message(chat_id=PREMIUM_CHANNEL, text=message, parse_mode='Markdown')
+        
+        print("✅ Auto-post envoyé dans les 2 canaux")
+        
     except Exception as e:
         print(f"Erreur auto-post: {e}")
 
@@ -50,13 +55,13 @@ async def auto_post(context: ContextTypes.DEFAULT_TYPE):
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "🌱 **JardinIA est en ligne !**\n\n"
-        "Je poste 3 astuces par jour dans le canal.\n"
-        "Pose-moi tes questions sur le jardin.\n\n"
+        "Je poste 3 astuces par jour dans les 2 canaux.\n"
+        "Pose-moi tes questions.\n\n"
         "💎 Premium → @JardinIAPremium"
     )
 
 async def testpost(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("🔄 Envoi d'un test auto-post dans le canal...")
+    await update.message.reply_text("🔄 Envoi d'un test dans les 2 canaux...")
     await auto_post(context)
 
 async def generate(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -87,5 +92,5 @@ if __name__ == '__main__':
     app.job_queue.run_daily(auto_post, time(hour=14, minute=0, tzinfo=tz))
     app.job_queue.run_daily(auto_post, time(hour=20, minute=0, tzinfo=tz))
     
-    print("🌱 JardinIA lancé avec les vrais IDs des canaux")
+    print("🌱 JardinIA lancé - Auto-post dans les 2 canaux")
     app.run_polling()
