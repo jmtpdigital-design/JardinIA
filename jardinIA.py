@@ -1,8 +1,9 @@
 import logging
 import os
 import random
-from datetime import time
+from datetime import time, datetime
 import pytz
+from collections import defaultdict
 
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
@@ -12,8 +13,8 @@ from openai import OpenAI
 TOKEN = os.getenv("TOKEN")
 XAI_API_KEY = os.getenv("XAI_API_KEY")
 
-PUBLIC_CHANNEL = -1003915029881      # ID de @JardinIA
-PREMIUM_CHANNEL = -1003993028860     # ID de @JardinIAPremium
+PUBLIC_CHANNEL = -1003915029881      # @JardinIA
+PREMIUM_CHANNEL = -1003993028860     # @JardinIAPremium
 
 client = OpenAI(api_key=XAI_API_KEY, base_url="https://api.x.ai/v1")
 
@@ -21,7 +22,17 @@ logging.basicConfig(level=logging.INFO)
 
 SYSTEM_PROMPT = "Tu es JardinIA, expert français en jardinage et potager. Réponds de façon claire, pratique et encourageante."
 
-# ================= AUTO-POST (dans les 2 canaux) =================
+# ================= LIMITES QUOTIDIENNES =================
+user_limits = defaultdict(lambda: {"count": 0, "date": None})
+
+def is_premium_user(user_id: int, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        member = context.bot.get_chat_member(chat_id=PREMIUM_CHANNEL, user_id=user_id)
+        return member.status in ["member", "administrator", "creator"]
+    except:
+        return False
+
+# ================= AUTO-POST =================
 async def auto_post(context: ContextTypes.DEFAULT_TYPE):
     try:
         resp = client.chat.completions.create(
@@ -39,45 +50,69 @@ async def auto_post(context: ContextTypes.DEFAULT_TYPE):
         )
         
         message = f"🌱 **JardinIA**\n\n{resp.choices[0].message.content}\n\n💎 Premium → @JardinIAPremium"
-
-        # Envoi dans le canal public
-        await context.bot.send_message(chat_id=PUBLIC_CHANNEL, text=message, parse_mode='Markdown')
         
-        # Envoi dans le canal Premium
+        await context.bot.send_message(chat_id=PUBLIC_CHANNEL, text=message, parse_mode='Markdown')
         await context.bot.send_message(chat_id=PREMIUM_CHANNEL, text=message, parse_mode='Markdown')
         
         print("✅ Auto-post envoyé dans les 2 canaux")
-        
     except Exception as e:
         print(f"Erreur auto-post: {e}")
 
 # ================= COMMANDES =================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    is_premium = is_premium_user(user_id, context)
+    
+    status = "💎 **Premium** - Illimité" if is_premium else "🆓 Gratuit - 8 questions/jour"
+    
     await update.message.reply_text(
-        "🌱 **JardinIA est en ligne !**\n\n"
-        "Je poste 3 astuces par jour dans les 2 canaux.\n"
-        "Pose-moi tes questions.\n\n"
-        "💎 Premium → @JardinIAPremium"
+        f"🌱 **Bienvenue sur JardinIA !**\n\n"
+        f"Statut : {status}\n\n"
+        f"Je poste 3 astuces par jour.\n"
+        f"Pose-moi toutes tes questions sur le jardin.\n\n"
+        f"💎 Pour passer en illimité → @JardinIAPremium"
     )
 
 async def testpost(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("🔄 Envoi d'un test dans les 2 canaux...")
+    await update.message.reply_text("🔄 Envoi d'un test auto-post...")
     await auto_post(context)
 
 async def generate(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text
+    user_id = update.message.from_user.id
+    today = datetime.now(pytz.timezone('Europe/Paris')).date()
+
+    # Vérification limite
+    if user_id not in user_limits or user_limits[user_id]["date"] != today:
+        user_limits[user_id] = {"count": 0, "date": today}
+
+    is_premium = is_premium_user(user_id, context)
+
+    if not is_premium and user_limits[user_id]["count"] >= 8:
+        await update.message.reply_text(
+            "🆓 Tu as atteint ta limite gratuite (8 questions/jour).\n\n"
+            "💎 Passe en Premium pour un accès illimité → @JardinIAPremium"
+        )
+        return
+
     await update.message.reply_text("🌱 Je réfléchis...")
 
     try:
         resp = client.chat.completions.create(
             model="grok-4.20",
-            messages=[{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": text}],
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": update.message.text}
+            ],
             temperature=0.75,
             max_tokens=700
         )
         await update.message.reply_text(resp.choices[0].message.content)
+        
+        if not is_premium:
+            user_limits[user_id]["count"] += 1
+            
     except Exception as e:
-        await update.message.reply_text("🌿 Erreur, réessaie dans 10 secondes...")
+        await update.message.reply_text("🌿 Petite erreur, réessaie dans 10 secondes...")
 
 # ================= LANCEMENT =================
 if __name__ == '__main__':
@@ -92,5 +127,5 @@ if __name__ == '__main__':
     app.job_queue.run_daily(auto_post, time(hour=14, minute=0, tzinfo=tz))
     app.job_queue.run_daily(auto_post, time(hour=20, minute=0, tzinfo=tz))
     
-    print("🌱 JardinIA lancé - Auto-post dans les 2 canaux")
+    print("🌱 JardinIA lancé avec limite Premium + Auto-post")
     app.run_polling()
